@@ -10,16 +10,42 @@ import DeviceModal from "./DeviceConnectionModal";
 import { PulseIndicator } from "./PulseIndicator";
 import useBLE from "./useBLE";
 
+const HEART_RATE_UUID = "0000180d-0000-1000-8000-00805f9b34fb";
+const HEART_RATE_CHARACTERISTIC = "00002a37-0000-1000-8000-00805f9b34fb";
+const DeviceIdentifier = "CorSense";
+
 const App = () => {
+  const onHeartRateUpdate = (characteristic) => {
+    const rawData = base64.decode(characteristic.value);
+    let innerHeartRate: number = -1;
+  
+    const firstBitValue: number = Number(rawData) & 0x01;
+  
+    if (firstBitValue === 0) {
+      innerHeartRate = rawData[1].charCodeAt(0);
+    } else {
+      innerHeartRate =
+        Number(rawData[1].charCodeAt(0) << 8) +
+        Number(rawData[2].charCodeAt(2));
+    }
+  
+    return innerHeartRate;
+  }
+  
   const {
     requestPermissions,
     scanForPeripherals,
     allDevices,
     connectToDevice,
     connectedDevice,
-    heartRate,
+    value: heartRate,
     disconnectFromDevice,
-  } = useBLE();
+  } = useBLE(
+    HEART_RATE_UUID,
+    HEART_RATE_CHARACTERISTIC,
+    DeviceIdentifier,
+    onUpdate: onHeartRateUpdate
+  );
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
   const scanForDevices = async () => {
