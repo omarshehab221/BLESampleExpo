@@ -1,11 +1,10 @@
-/* eslint-disable no-bitwise */
 import { useMemo, useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import {
-  BleError,
+  type BleError,
   BleManager,
-  Characteristic,
-  Device,
+  type Characteristic,
+  type Device,
 } from "react-native-ble-plx";
 
 import * as ExpoDevice from "expo-device";
@@ -19,19 +18,19 @@ interface BluetoothLowEnergyApi {
   disconnectFromDevice: () => void;
   connectedDevice: Device | null;
   allDevices: Device[];
-  heartRate: number;
+  value: number;
 }
 
 function useBLE({
   UUID,
   CHARACTERISTIC,
   DeviceIdentifier,
-  onUpdate: propOnUpdate
+  onUpdate: propOnUpdate,
 }: {
   UUID: string;
   CHARACTERISTIC: string;
   DeviceIdentifier: string;
-  onUpdate: (characteristic: Characteristic) => number;
+  onUpdate: (data: string) => number;
 }): BluetoothLowEnergyApi {
   const bleManager = useMemo(() => new BleManager(), []);
   const [allDevices, setAllDevices] = useState<Device[]>([]);
@@ -83,15 +82,14 @@ function useBLE({
           }
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } else {
-        const isAndroid31PermissionsGranted =
-          await requestAndroid31Permissions();
-
-        return isAndroid31PermissionsGranted;
       }
-    } else {
-      return true;
+
+      const isAndroid31PermissionsGranted = await requestAndroid31Permissions();
+
+      return isAndroid31PermissionsGranted;
     }
+
+    return true;
   };
 
   const isDuplicteDevice = (devices: Device[], nextDevice: Device) =>
@@ -102,7 +100,7 @@ function useBLE({
       if (error) {
         console.log(error);
       }
-      if (device && device.name?.includes(DeviceIdentifier)) {
+      if (device?.name?.includes(DeviceIdentifier)) {
         setAllDevices((prevState: Device[]) => {
           if (!isDuplicteDevice(prevState, device)) {
             return [...prevState, device];
@@ -139,21 +137,21 @@ function useBLE({
     if (error) {
       console.log(error);
       return -1;
-    } else if (!characteristic?.value) {
+    }
+
+    if (!characteristic?.value) {
       console.log("No Data was recieved");
       return -1;
     }
 
-    setValue(propOnUpdate(characteristic));
+    const rawData = base64.decode(characteristic.value);
+
+    setValue(propOnUpdate(rawData));
   };
 
   const startStreamingData = async (device: Device) => {
     if (device) {
-      device.monitorCharacteristicForService(
-        UUID,
-        UUID,
-        onUpdate
-      );
+      device.monitorCharacteristicForService(UUID, UUID, onUpdate);
     } else {
       console.log("No Device Connected");
     }

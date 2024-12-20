@@ -15,23 +15,6 @@ const HEART_RATE_CHARACTERISTIC = "00002a37-0000-1000-8000-00805f9b34fb";
 const DeviceIdentifier = "CorSense";
 
 const App = () => {
-  const onHeartRateUpdate = (characteristic) => {
-    const rawData = base64.decode(characteristic.value);
-    let innerHeartRate: number = -1;
-  
-    const firstBitValue: number = Number(rawData) & 0x01;
-  
-    if (firstBitValue === 0) {
-      innerHeartRate = rawData[1].charCodeAt(0);
-    } else {
-      innerHeartRate =
-        Number(rawData[1].charCodeAt(0) << 8) +
-        Number(rawData[2].charCodeAt(2));
-    }
-  
-    return innerHeartRate;
-  }
-  
   const {
     requestPermissions,
     scanForPeripherals,
@@ -40,12 +23,26 @@ const App = () => {
     connectedDevice,
     value: heartRate,
     disconnectFromDevice,
-  } = useBLE(
-    HEART_RATE_UUID,
-    HEART_RATE_CHARACTERISTIC,
+  } = useBLE({
+    UUID: HEART_RATE_UUID,
+    CHARACTERISTIC: HEART_RATE_CHARACTERISTIC,
     DeviceIdentifier,
-    onUpdate: onHeartRateUpdate
-  );
+    onUpdate: (rawData) => {
+      let innerHeartRate = -1;
+
+      const firstBitValue: number = Number(rawData) & 0x01;
+
+      if (firstBitValue === 0) {
+        innerHeartRate = rawData[1].charCodeAt(0);
+      } else {
+        innerHeartRate =
+          Number(rawData[1].charCodeAt(0) << 8) +
+          Number(rawData[2].charCodeAt(2));
+      }
+
+      return innerHeartRate;
+    },
+  });
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
   const scanForDevices = async () => {
