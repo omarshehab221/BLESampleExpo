@@ -15,6 +15,7 @@ interface BluetoothLowEnergyApi {
   requestPermissions(): Promise<boolean>;
   scanForPeripherals(): void;
   connectToDevice: (deviceId: Device) => Promise<void>;
+  sendCommand: (command: string, device: Device) => Promise<void>;
   disconnectFromDevice: () => void;
   connectedDevice: Device | null;
   allDevices: Device[];
@@ -157,12 +158,25 @@ function useBLE({
     }
   };
 
+  const sendCommand = async (command: string, device: Device | null) => {
+    if (device) {
+      await device.writeCharacteristicWithoutResponseForService(
+        UUID,
+        CHARACTERISTIC,
+        base64.encode(command)
+      );
+    } else {
+      console.log("No Device Connected");
+    }
+  };
+
   return {
     scanForPeripherals,
     requestPermissions,
     connectToDevice,
     allDevices,
     connectedDevice,
+    sendCommand,
     disconnectFromDevice,
     value,
   };
