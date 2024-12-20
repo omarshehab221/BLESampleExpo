@@ -22,6 +22,7 @@ const App = () => {
     connectToDevice,
     connectedDevice,
     value: heartRate,
+    sendCommand,
     disconnectFromDevice,
   } = useBLE({
     UUID: HEART_RATE_UUID,
