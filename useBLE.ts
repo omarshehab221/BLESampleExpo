@@ -12,9 +12,6 @@ import * as ExpoDevice from "expo-device";
 
 import base64 from "react-native-base64";
 
-const HEART_RATE_UUID = "0000180d-0000-1000-8000-00805f9b34fb";
-const HEART_RATE_CHARACTERISTIC = "00002a37-0000-1000-8000-00805f9b34fb";
-
 interface BluetoothLowEnergyApi {
   requestPermissions(): Promise<boolean>;
   scanForPeripherals(): void;
@@ -25,11 +22,21 @@ interface BluetoothLowEnergyApi {
   heartRate: number;
 }
 
-function useBLE(): BluetoothLowEnergyApi {
+function useBLE({
+  UUID,
+  CHARACTERISTIC,
+  DeviceIdentifier,
+  onUpdate: propOnUpdate
+}: {
+  UUID: string;
+  CHARACTERISTIC: string;
+  DeviceIdentifier: string;
+  onUpdate: (characteristic: Characteristic) => number;
+}): BluetoothLowEnergyApi {
   const bleManager = useMemo(() => new BleManager(), []);
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
-  const [heartRate, setHeartRate] = useState<number>(0);
+  const [value, setValue] = useState<number>(0);
 
   const requestAndroid31Permissions = async () => {
     const bluetoothScanPermission = await PermissionsAndroid.request(
@@ -95,7 +102,7 @@ function useBLE(): BluetoothLowEnergyApi {
       if (error) {
         console.log(error);
       }
-      if (device && device.name?.includes("CorSense")) {
+      if (device && device.name?.includes(DeviceIdentifier)) {
         setAllDevices((prevState: Device[]) => {
           if (!isDuplicteDevice(prevState, device)) {
             return [...prevState, device];
@@ -121,11 +128,11 @@ function useBLE(): BluetoothLowEnergyApi {
     if (connectedDevice) {
       bleManager.cancelDeviceConnection(connectedDevice.id);
       setConnectedDevice(null);
-      setHeartRate(0);
+      setValue(0);
     }
   };
 
-  const onHeartRateUpdate = (
+  const onUpdate = (
     error: BleError | null,
     characteristic: Characteristic | null
   ) => {
@@ -137,28 +144,15 @@ function useBLE(): BluetoothLowEnergyApi {
       return -1;
     }
 
-    const rawData = base64.decode(characteristic.value);
-    let innerHeartRate: number = -1;
-
-    const firstBitValue: number = Number(rawData) & 0x01;
-
-    if (firstBitValue === 0) {
-      innerHeartRate = rawData[1].charCodeAt(0);
-    } else {
-      innerHeartRate =
-        Number(rawData[1].charCodeAt(0) << 8) +
-        Number(rawData[2].charCodeAt(2));
-    }
-
-    setHeartRate(innerHeartRate);
+    setValue(propOnUpdate(characteristic));
   };
 
   const startStreamingData = async (device: Device) => {
     if (device) {
       device.monitorCharacteristicForService(
-        HEART_RATE_UUID,
-        HEART_RATE_CHARACTERISTIC,
-        onHeartRateUpdate
+        UUID,
+        UUID,
+        onUpdate
       );
     } else {
       console.log("No Device Connected");
@@ -172,7 +166,7 @@ function useBLE(): BluetoothLowEnergyApi {
     allDevices,
     connectedDevice,
     disconnectFromDevice,
-    heartRate,
+    value,
   };
 }
 
