@@ -151,7 +151,7 @@ function useBLE({
 
   const startStreamingData = async (device: Device) => {
     if (device) {
-      device.monitorCharacteristicForService(UUID, UUID, onUpdate);
+      device.monitorCharacteristicForService(UUID, CHARACTERISTIC, onUpdate);
     } else {
       console.log("No Device Connected");
     }
